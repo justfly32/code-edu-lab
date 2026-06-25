@@ -31,6 +31,9 @@ from db_helper import (
     get_submissions_timeline,
     search_students,
     get_all_lessons,
+    get_curriculum_by_course,
+    get_student_progress,
+    update_student_progress,
 )
 
 # ===== 페이지 설정 (Page Configuration) =====
@@ -126,7 +129,7 @@ st.sidebar.markdown("---")  # 구분선
 # 페이지 선택 라디오 버튼
 page = st.sidebar.radio(
     "페이지 선택 (Select Page)",  # 라벨
-    ["개요", "학생 관리", "과목 현황", "강의 내용", "과제 제출"],  # 옵션 목록
+    ["개요", "학생 관리", "과목 현황", "강의 내용", "과제 제출", "커리큘럼", "학습 현황"],  # 옵션 목록
     index=0,  # 기본 선택 (Default selection)
 )
 
@@ -406,6 +409,302 @@ elif page == "과제 제출":
 
     else:
         st.info("제출된 과제가 없습니다.")
+
+
+# ===== 6. 커리큘럼 페이지 (Curriculum Page) =====
+elif page == "커리큘럼":
+    st.title("🎯 커리큘럼")
+    st.markdown("과목별 커리큘럼 모듈과 스텝을 학습합니다.")
+
+    courses = get_all_courses()
+    students = get_all_students()
+
+    if not courses:
+        st.info("등록된 과목이 없습니다.")
+    else:
+        # --- 학생 선택 ---
+        student_options = {f"{s['name']} ({s['email']})": s["id"] for s in students} if students else {}
+        if not student_options:
+            st.warning("등록된 학생이 없습니다. 먼저 학생을 등록해주세요.")
+        else:
+            selected_student_name = st.selectbox(
+                "👨‍🎓 학생 선택 (Select Student)",
+                options=list(student_options.keys()),
+                key="curriculum_student_select",
+            )
+            selected_student_id = student_options[selected_student_name]
+
+            st.markdown("---")
+
+            # --- 과목 선택 ---
+            course_options = {f"{c['title']} [{c.get('level', '')}]": c["id"] for c in courses}
+            selected_course_label = st.selectbox(
+                "📘 과목 선택 (Select Course)",
+                options=list(course_options.keys()),
+                key="curriculum_course_select",
+            )
+            selected_course_id = course_options[selected_course_label]
+
+            st.markdown("---")
+
+            # --- 커리큘럼 데이터 로드 ---
+            modules = get_curriculum_by_course(selected_course_id)
+            student_progress = get_student_progress(selected_student_id)
+            completed_step_ids = {p["step_id"] for p in student_progress if p["status"] == "completed"}
+
+            # --- 진행 현황 요약 ---
+            total_steps = sum(len(m.get("steps", [])) for m in modules)
+            completed_count = sum(
+                1 for m in modules for s in m.get("steps", []) if s["id"] in completed_step_ids
+            )
+            progress_pct = (completed_count / total_steps * 100) if total_steps > 0 else 0
+
+            col_prog1, col_prog2, col_prog3 = st.columns(3)
+            with col_prog1:
+                st.metric("전체 스텝", f"{total_steps}개")
+            with col_prog2:
+                st.metric("완료 스텝", f"{completed_count}개")
+            with col_prog3:
+                st.metric("진행률", f"{progress_pct:.1f}%")
+
+            st.progress(progress_pct / 100)
+            st.markdown("---")
+
+            # --- 모듈별 아코디언 (expander) ---
+            if not modules:
+                st.info("이 과목에 등록된 커리큘럼 모듈이 없습니다.")
+            else:
+                for module in modules:
+                    module_steps = module.get("steps", [])
+                    module_completed = sum(1 for s in module_steps if s["id"] in completed_step_ids)
+                    module_total = len(module_steps)
+                    module_pct = (module_completed / module_total * 100) if module_total > 0 else 0
+
+                    # 모듈 진행률에 따라 아이콘 변경
+                    if module_pct >= 100:
+                        icon = "✅"
+                    elif module_pct > 0:
+                        icon = "🔄"
+                    else:
+                        icon = "📌"
+
+                    with st.expander(
+                        f"{icon} 모듈 {module['order_num']}: {module['title']} "
+                        f"({module_completed}/{module_total} 완료, {module_pct:.0f}%)"
+                    ):
+                        # 모듈 설명
+                        if module.get("description"):
+                            st.markdown(f"**설명:** {module['description']}")
+                        if module.get("estimated_minutes"):
+                            st.markdown(f"⏱️ 예상 소요시간: {module['estimated_minutes']}분")
+                        if module.get("difficulty"):
+                            st.markdown(f"📊 난이도: {module['difficulty']}")
+
+                        st.markdown("---")
+
+                        # 스텝별 표시
+                        if not module_steps:
+                            st.info("이 모듈에 등록된 스텝이 없습니다.")
+                        else:
+                            for step in module_steps:
+                                is_completed = step["id"] in completed_step_ids
+
+                                # 스텝 헤더
+                                status_icon = "✅" if is_completed else "⬜"
+                                st.markdown(f"### {status_icon} 스텝 {step['order_num']}: {step['title']}")
+
+                                # 지시사항 (Korean instruction)
+                                if step.get("instruction"):
+                                    st.markdown(f"**📖 지시사항:**\n\n{step['instruction']}")
+
+                                # 코드 예시
+                                if step.get("code_example"):
+                                    st.markdown("**💻 코드 예시:**")
+                                    st.code(step["code_example"], language="python")
+
+                                # 예상 출력
+                                if step.get("expected_output"):
+                                    st.markdown("**📤 예상 출력:**")
+                                    st.code(step["expected_output"], language="text")
+
+                                # 힌트
+                                if step.get("hints"):
+                                    with st.expander("💡 힌트 보기"):
+                                        st.markdown(step["hints"])
+
+                                # 확인 질문
+                                if step.get("check_description"):
+                                    st.info(f"🔍 **확인:** {step['check_description']}")
+
+                                # 완료 버튼
+                                if is_completed:
+                                    st.success("✔️ 이 스텝은 이미 완료되었습니다.")
+                                else:
+                                    if st.button(
+                                        "✅ 완료",
+                                        key=f"complete_step_{step['id']}",
+                                        use_container_width=True,
+                                    ):
+                                        success = update_student_progress(
+                                            selected_student_id, step["id"], "completed"
+                                        )
+                                        if success:
+                                            st.success("완료 처리되었습니다! 🎉")
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                        else:
+                                            st.error("저장 중 오류가 발생했습니다. 다시 시도해주세요.")
+
+                                st.markdown("---")
+
+
+# ===== 7. 학습 현황 페이지 (Learning Status Page) =====
+elif page == "학습 현황":
+    st.title("📊 학습 현황")
+    st.markdown("전체 과목에 걸친 학습 진행 상황과 통계를 확인합니다.")
+
+    courses = get_all_courses()
+    students = get_all_students()
+
+    if not courses or not students:
+        st.info("데이터가 충분하지 않습니다. 과목과 학생을 먼저 등록해주세요.")
+    else:
+        # --- 전체 통계 계산 ---
+        all_course_stats = []
+        total_modules_all = 0
+        total_steps_all = 0
+        total_completed_all = 0
+
+        for course in courses:
+            modules = get_curriculum_by_course(course["id"])
+            course_total_steps = sum(len(m.get("steps", [])) for m in modules)
+            course_module_count = len(modules)
+
+            # 모든 학생의 완료 스텝 수 계산
+            course_completed_steps = 0
+            for student in students:
+                progress = get_student_progress(student["id"])
+                student_completed_ids = {p["step_id"] for p in progress if p["status"] == "completed"}
+                for module in modules:
+                    for step in module.get("steps", []):
+                        if step["id"] in student_completed_ids:
+                            course_completed_steps += 1
+
+            total_possible = course_total_steps * len(students) if students else 0
+            course_pct = (course_completed_steps / total_possible * 100) if total_possible > 0 else 0
+
+            all_course_stats.append({
+                "course": course,
+                "module_count": course_module_count,
+                "total_steps": course_total_steps,
+                "completed_steps": course_completed_steps,
+                "total_possible": total_possible,
+                "completion_pct": course_pct,
+            })
+
+            total_modules_all += course_module_count
+            total_steps_all += course_total_steps
+            total_completed_all += course_completed_steps
+
+        # --- KPI 카드 ---
+        overall_pct = (total_completed_all / (total_steps_all * len(students)) * 100) if total_steps_all > 0 and students else 0
+
+        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+        with kpi_col1:
+            st.metric("전체 과목 수", f"{len(courses)}개")
+        with kpi_col2:
+            st.metric("전체 모듈 수", f"{total_modules_all}개")
+        with kpi_col3:
+            st.metric("전체 스텝 수", f"{total_steps_all}개")
+        with kpi_col4:
+            st.metric("전체 진행률", f"{overall_pct:.1f}%")
+
+        st.progress(overall_pct / 100)
+        st.markdown("---")
+
+        # --- 과목별 진행 현황 ---
+        st.subheader("📘 과목별 진행 현황")
+
+        for stat in all_course_stats:
+            course = stat["course"]
+            with st.expander(
+                f"📘 {course['title']} - 진행률 {stat['completion_pct']:.1f}% "
+                f"({stat['completed_steps']}/{stat['total_possible']})"
+            ):
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.metric("모듈 수", f"{stat['module_count']}개")
+                with col_b:
+                    st.metric("스텝 수", f"{stat['total_steps']}개")
+                with col_c:
+                    st.metric("완료 스텝", f"{stat['completed_steps']}")
+
+                st.progress(stat["completion_pct"] / 100)
+
+                # 모듈별 상세
+                modules = get_curriculum_by_course(course["id"])
+                if modules:
+                    st.markdown("**모듈별 상세:**")
+                    for module in modules:
+                        module_steps = module.get("steps", [])
+                        module_total = len(module_steps)
+
+                        # 이 모듈의 전체 완료 수
+                        module_completed = 0
+                        for student in students:
+                            progress = get_student_progress(student["id"])
+                            student_completed_ids = {p["step_id"] for p in progress if p["status"] == "completed"}
+                            for step in module_steps:
+                                if step["id"] in student_completed_ids:
+                                    module_completed += 1
+
+                        module_possible = module_total * len(students) if students else 0
+                        module_pct = (module_completed / module_possible * 100) if module_possible > 0 else 0
+
+                        st.markdown(
+                            f"- **모듈 {module['order_num']}:** {module['title']} "
+                            f"({module_completed}/{module_possible}, {module_pct:.0f}%)"
+                        )
+                        st.progress(module_pct / 100)
+
+        st.markdown("---")
+
+        # --- 학생별 진행 현황 ---
+        st.subheader("👨‍🎓 학생별 진행 현황")
+
+        student_stats = []
+        for student in students:
+            progress = get_student_progress(student["id"])
+            completed_ids = {p["step_id"] for p in progress if p["status"] == "completed"}
+
+            student_total = 0
+            student_completed = 0
+            for course in courses:
+                modules = get_curriculum_by_course(course["id"])
+                for module in modules:
+                    for step in module.get("steps", []):
+                        student_total += 1
+                        if step["id"] in completed_ids:
+                            student_completed += 1
+
+            student_pct = (student_completed / student_total * 100) if student_total > 0 else 0
+            student_stats.append({
+                "student": student,
+                "total": student_total,
+                "completed": student_completed,
+                "pct": student_pct,
+            })
+
+        # 정렬: 진행률 높은 순
+        student_stats.sort(key=lambda x: x["pct"], reverse=True)
+
+        for stat in student_stats:
+            student = stat["student"]
+            st.markdown(
+                f"**{student['name']}** ({student['email']}) - "
+                f"{stat['completed']}/{stat['total']} 완료 ({stat['pct']:.1f}%)"
+            )
+            st.progress(stat["pct"] / 100)
 
 
 # ===== 푸터 (Footer) =====

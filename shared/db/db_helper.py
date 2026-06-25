@@ -176,6 +176,311 @@ def get_course_statistics() -> list[dict]:
     return rows
 
 
+def get_curriculum_by_course(course_id: int) -> list[dict]:
+    """
+    특정 과목의 커리큘럼(모듈 + 스텝)을 계층적으로 반환합니다.
+    
+    Args:
+        course_id: 과목 ID
+    
+    Returns:
+        모듈 목록 (각 모듈에 steps 키로 스텝 리스트 포함)
+    """
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT id, title, description, order_num, estimated_minutes, difficulty
+        FROM curriculum_modules
+        WHERE course_id = ?
+        ORDER BY order_num;
+        """,
+        (course_id,),
+    )
+    modules = [dict(row) for row in cursor.fetchall()]
+
+    for module in modules:
+        cursor = conn.execute(
+            """
+            SELECT id, title, instruction, code_example, expected_output,
+                   hints, check_query, check_description, order_num
+            FROM curriculum_steps
+            WHERE module_id = ?
+            ORDER BY order_num;
+            """,
+            (module["id"],),
+        )
+        module["steps"] = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
+    return modules
+
+
+def get_student_progress(student_id: int) -> list[dict]:
+    """
+    학생의 진행 상황을 스텝 상세 정보와 함께 반환합니다.
+    
+    Args:
+        student_id: 학생 ID
+    
+    Returns:
+        진행 상황 목록 (스텝 및 모듈 정보 포함)
+    """
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT sp.id, sp.step_id, sp.status, sp.completed_at, sp.attempts,
+               cs.title AS step_title, cs.order_num AS step_order,
+               cm.id AS module_id, cm.title AS module_title
+        FROM student_progress sp
+        JOIN curriculum_steps cs ON sp.step_id = cs.id
+        JOIN curriculum_modules cm ON cs.module_id = cm.id
+        WHERE sp.student_id = ?
+        ORDER BY cm.order_num, cs.order_num;
+        """,
+        (student_id,),
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def update_student_progress(student_id: int, step_id: int, status: str) -> bool:
+    """
+    학생의 진행 상황을 업데이트합니다. 기록이 없으면 새로 생성합니다.
+    
+    Args:
+        student_id: 학생 ID
+        step_id: 스텝 ID
+        status: 진행 상태 ('not_started', 'in_progress', 'completed')
+    
+    Returns:
+        성공 여부
+    """
+    conn = get_db_connection()
+    try:
+        # Check if record exists
+        cursor = conn.execute(
+            "SELECT id, attempts FROM student_progress WHERE student_id = ? AND step_id = ?;",
+            (student_id, step_id),
+        )
+        existing = cursor.fetchone()
+
+        if existing:
+            # Update existing record
+            completed_at = "datetime('now')" if status == "completed" else "NULL"
+            conn.execute(
+                f"""
+                UPDATE student_progress
+                SET status = ?,
+                    completed_at = {completed_at},
+                    attempts = attempts + 1
+                WHERE student_id = ? AND step_id = ?;
+                """,
+                (status, student_id, step_id),
+            )
+        else:
+            # Insert new record
+            completed_at = "datetime('now')" if status == "completed" else "NULL"
+            conn.execute(
+                f"""
+                INSERT INTO student_progress (student_id, step_id, status, completed_at, attempts)
+                VALUES (?, ?, ?, {completed_at}, 1);
+                """,
+                (student_id, step_id, status),
+            )
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.close()
+        print(f"Error updating progress: {e}")
+        return False
+
+
+def get_next_step(student_id: int, course_id: int) -> Optional[dict]:
+    """
+    학생이 다음에 완료해야 할 스텝을 반환합니다.
+    
+    Args:
+        student_id: 학생 ID
+        course_id: 과목 ID
+    
+    Returns:
+        다음 미완료 스텝 정보 (모듈 정보 포함), 모든 완료 시 None
+    """
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT cs.id AS step_id, cs.title AS step_title, cs.order_num AS step_order,
+               cm.id AS module_id, cm.title AS module_title, cm.order_num AS module_order
+        FROM curriculum_steps cs
+        JOIN curriculum_modules cm ON cs.module_id = cm.id
+        WHERE cm.course_id = ?
+          AND cs.id NOT IN (
+              SELECT step_id FROM student_progress
+              WHERE student_id = ? AND status = 'completed'
+          )
+        ORDER BY cm.order_num, cs.order_num
+        LIMIT 1;
+        """,
+        (course_id, student_id),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+# ===== 추가 함수 (Streamlit 대시보드용) =====
+
+def get_all_submissions() -> list[dict]:
+    """
+    모든 제출 정보를 상세 정보와 함께 반환합니다.
+    
+    Returns:
+        제출 목록 (학생명, 수업명, 과목명, 코드, 점수, 제출일시, 상태 포함)
+    """
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT s.id, st.name AS student_name, l.title AS lesson_title,
+               c.title AS course_title, s.code_text AS code, s.score,
+               s.submitted_at,
+               CASE
+                   WHEN s.score >= 90 THEN '우수'
+                   WHEN s.score >= 70 THEN '통과'
+                   ELSE '미흡'
+               END AS status
+        FROM submissions s
+        JOIN students st ON s.student_id = st.id
+        JOIN lessons l ON s.lesson_id = l.id
+        JOIN courses c ON l.course_id = c.id
+        ORDER BY s.submitted_at DESC;
+        """
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_student_count() -> int:
+    """전체 학생 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT COUNT(*) AS cnt FROM students;")
+    row = cursor.fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+def get_course_count() -> int:
+    """전체 과목 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT COUNT(*) AS cnt FROM courses;")
+    row = cursor.fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+def get_submission_count() -> int:
+    """전체 제출 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT COUNT(*) AS cnt FROM submissions;")
+    row = cursor.fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+def get_avg_score() -> float:
+    """전체 평균 점수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT ROUND(AVG(score), 1) AS avg FROM submissions;")
+    row = cursor.fetchone()
+    conn.close()
+    return row["avg"] if row and row["avg"] is not None else 0.0
+
+
+def get_students_by_course() -> list[dict]:
+    """과목별 학생 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT c.title AS title, COUNT(e.student_id) AS student_count
+        FROM courses c
+        LEFT JOIN enrollments e ON c.id = e.course_id
+        GROUP BY c.id
+        ORDER BY c.id;
+        """
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_grade_distribution() -> list[dict]:
+    """학점 분포를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT grade, COUNT(*) AS count
+        FROM enrollments
+        WHERE grade IS NOT NULL
+        GROUP BY grade
+        ORDER BY grade;
+        """
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_submissions_timeline() -> list[dict]:
+    """월별 제출 추이를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT strftime('%Y-%m', submitted_at) AS month, COUNT(*) AS count
+        FROM submissions
+        GROUP BY month
+        ORDER BY month;
+        """
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def search_students(query: str) -> list[dict]:
+    """이름 또는 이메일로 학생을 검색합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT * FROM students
+        WHERE name LIKE ? OR email LIKE ?
+        ORDER BY name;
+        """,
+        (f"%{query}%", f"%{query}%"),
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_all_lessons() -> list[dict]:
+    """모든 수업 정보를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.execute(
+        """
+        SELECT l.*, c.title AS course_title
+        FROM lessons l
+        JOIN courses c ON l.course_id = c.id
+        ORDER BY c.id, l.order_num;
+        """
+    )
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 if __name__ == "__main__":
     import json
 

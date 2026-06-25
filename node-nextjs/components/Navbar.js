@@ -11,9 +11,11 @@ import { usePathname } from 'next/navigation';
 
 // 네비게이션 항목 설정
 const navItems = [
-  { href: '/', label: '대시보드', icon: '�' },
+  { href: '/', label: '대시보드', icon: '📊' },
   { href: '/students', label: '학생 관리', icon: '👨‍🎓' },
   { href: '/courses', label: '과목 목록', icon: '📚' },
+  { href: '/curriculum', label: '커리큘럼', icon: '🎯' },
+  { href: '/progress', label: '학습 현황', icon: '📈' },
   { href: '/submissions', label: '제출 현황', icon: '📝' },
 ];
 

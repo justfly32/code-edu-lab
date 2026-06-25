@@ -27,7 +27,7 @@ const PORT = 3001;      // 서버 포트 번호
 // 데이터베이스 경로 및 시드 확인 (Seed Check)
 // ============================================================
 // 공유 SQLite 데이터베이스 경로 설정
-const DB_PATH = path.resolve(__dirname, '../code-edu-lab/shared/db/edu.db');
+const DB_PATH = path.resolve(__dirname, '../shared/db/edu.db');
 
 // 서버 시작 시 DB 파일 존재 여부 확인
 // 파일이 없으면 에러 메시지를 출력하고 서버를 종료합니다
@@ -379,7 +379,107 @@ app.get('/api/statistics', (req, res) => {
 });
 
 // ============================================================
-// 서버 시작
+// 커리큘럼 API - 학습 가이드 � 진도 관리
+// ============================================================
+app.get('/api/curriculum', (req, res) => {
+  try {
+    const modules = db.prepare(`
+      SELECT cm.id, cm.course_id, cm.title, cm.description, cm.order_num,
+             cm.estimated_minutes, cm.difficulty, c.title as course_title
+      FROM curriculum_modules cm
+      JOIN courses c ON cm.course_id = c.id
+      ORDER BY cm.course_id, cm.order_num
+    `).all();
+
+    const courses = {};
+    for (const m of modules) {
+      if (!courses[m.course_id]) {
+        courses[m.course_id] = { id: m.course_id, title: m.course_title, modules: [] };
+      }
+      const steps = db.prepare('SELECT id, title, order_num FROM curriculum_steps WHERE module_id = ? ORDER BY order_num').all(m.id);
+      courses[m.course_id].modules.push({ ...m, step_count: steps.length, steps });
+    }
+    res.json({ success: true, courses: Object.values(courses) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/curriculum/:courseId', (req, res) => {
+  try {
+    const modules = db.prepare(`
+      SELECT cm.*, c.title as course_title
+      FROM curriculum_modules cm
+      JOIN courses c ON cm.course_id = c.id
+      WHERE cm.course_id = ?
+      ORDER BY cm.order_num
+    `).all(req.params.courseId);
+
+    for (const m of modules) {
+      m.steps = db.prepare('SELECT * FROM curriculum_steps WHERE module_id = ? ORDER BY order_num').all(m.id);
+    }
+    res.json({ success: true, modules });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/curriculum/:courseId/step/:stepId', (req, res) => {
+  try {
+    const step = db.prepare('SELECT * FROM curriculum_steps WHERE id = ? AND course_id = ?')
+      .get(req.params.stepId, req.params.courseId);
+    if (!step) return res.status(404).json({ success: false, error: 'Step not found' });
+
+    const moduleInfo = db.prepare('SELECT title as module_title FROM curriculum_modules WHERE id = ?').get(step.module_id);
+    const courseInfo = db.prepare('SELECT id as course_id FROM curriculum_modules WHERE id = ?').get(step.module_id);
+
+    const prev = db.prepare('SELECT id FROM curriculum_steps WHERE module_id = ? AND order_num < ? ORDER BY order_num DESC LIMIT 1').get(step.module_id, step.order_num);
+    const next = db.prepare('SELECT id FROM curriculum_steps WHERE module_id = ? AND order_num > ? ORDER BY order_num ASC LIMIT 1').get(step.module_id, step.order_num);
+
+    res.json({ success: true, step: { ...step, module_title: moduleInfo?.module_title }, course_idcourse_id, prev_id: prev?.id || null, next_id: next?.id || null });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/curriculum/:courseId/step/:stepId/complete', (req, res) => {
+  try {
+    const { student_id = 1 } = req.body || {};
+    const stepId = req.params.stepId;
+
+    const existing = db.prepare('SELECT * FROM student_progress WHERE student_id = ? AND step_id = ?').get(student_id, stepId);
+    if (existing) {
+      db.prepare(`UPDATE student_progress SET status = 'completed', completed_at = datetime('now'), attempts = attempts + 1 WHERE student_id = ? AND step_id = ?`).run(student_id, stepId);
+    } else {
+      db.prepare(`INSERT INTO student_progress (student_id, step_id, status, completed_at) VALUES (?, ?, 'completed', datetime('now'))`).run(student_id, stepId);
+    }
+
+    res.json({ success: true, message: '단계 완료 처리되었습니다', student_id: parseInt(student_id), step_id: parseInt(stepId) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/progress/:studentId', (req, res) => {
+  try {
+    const progress = db.prepare(`
+      SELECT sp.*, cs.title as step_title, cm.title as module_title, cm.course_id
+      FROM student_progress sp
+      JOIN curriculum_steps cs ON sp.step_id = cs.id
+      JOIN curriculum_modules cm ON cs.module_id = cm.id
+      WHERE sp.student_id = ?
+      ORDER BY sp.completed_at DESC
+    `).all(req.params.studentId);
+
+    const total = db.prepare('SELECT COUNT(*) as cnt FROM curriculum_steps').get();
+    const completed = db.prepare("SELECT COUNT(*) as cnt FROM student_progress WHERE student_id = ? AND status = 'completed'").get(req.params.studentId);
+    const percentage = total.cnt > 0 ? Math.round((completed.cnt / total.cnt) * 100) : 0;
+
+    res.json({ success: true, progress, total_steps: total.cnt, completed_steps: completed.cnt, percentage });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // ============================================================
 // Express 서버를 지정된 포트에서 시작
 // 시작 완료 시 콘솔에 메시지 출력

@@ -68,3 +68,51 @@ export async function fetchRecentSubmissions(limit = 5) {
   if (!res.ok) throw new Error('최근 제출을 가져올 수 없습니다');
   return res.json();
 }
+
+/**
+ * 커리큘럼 개요를 가져오는 함수
+ * 전체 과목 목록과 각 과목의 진행률을 반환
+ * @returns {Promise<Object>} 커리큘럼 개요 데이터 (courses 배열, overallProgress 등)
+ */
+export async function fetchCurriculumOverview() {
+  const res = await fetch(`${API_BASE}/curriculum/overview`);
+  if (!res.ok) throw new Error('커리큘럼 개요를 가져올 수 없습니다');
+  return res.json();
+}
+
+/**
+ * 특정 과목의 모듈 목록을 가져오는 함수
+ * @param {string} courseId - 과목 식별자
+ * @returns {Promise<Object>} 과목 상세 정보 (modules 배열, steps 포함)
+ */
+export async function fetchCourseModules(courseId) {
+  const res = await fetch(`${API_BASE}/curriculum/${courseId}/modules`);
+  if (!res.ok) throw new Error('과목 모듈을 가져올 수 없습니다');
+  return res.json();
+}
+
+/**
+ * 특정 스텝의 상세 정보를 가져오는 함수
+ * @param {string} courseId - 과목 식별자
+ * @param {string} stepId - 스텝 식별자
+ * @returns {Promise<Object>} 스텝 상세 정보 (instruction, code, hints, expectedOutput 등)
+ */
+export async function fetchStepDetail(courseId, stepId) {
+  const res = await fetch(`${API_BASE}/curriculum/${courseId}/steps/${stepId}`);
+  if (!res.ok) throw new Error('스텝 상세 정보를 가져올 수 없습니다');
+  return res.json();
+}
+
+/**
+ * 스텝을 완료 상태로 표시하는 함수
+ * @param {string} stepId - 완료할 스텝 식별자
+ * @returns {Promise<Object>} 완료 결과 (success, completedAt 등)
+ */
+export async function markStepComplete(stepId) {
+  const res = await fetch(`${API_BASE}/curriculum/steps/${stepId}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error('스텝 완료 처리에 실패했습니다');
+  return res.json();
+}

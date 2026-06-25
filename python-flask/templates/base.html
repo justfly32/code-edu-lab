@@ -22,6 +22,7 @@
             <li><a href="/" class="{{ 'active' if request.path == '/' }}">대시보드</a></li>
             <li><a href="/students" class="{{ 'active' if request.path == '/students' }}">학생</a></li>
             <li><a href="/courses" class="{{ 'active' if request.path == '/courses' }}">강좌</a></li>
+            <li><a href="/curriculum" class="{{ 'active' if request.path.startswith('/curriculum') or request.path == '/progress' }}">커리큘럼</a></li>
             <li><a href="/submissions" class="{{ 'active' if request.path == '/submissions' }}">제출</a></li>
         </ul>
     </nav>

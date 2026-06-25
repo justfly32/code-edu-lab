@@ -1,0 +1,195 @@
+{# 
+  curriculum.html - 커리큘럼 개요 페이지 (Curriculum overview page)
+  
+  모든 강좌의 목록과 진행 상황을 진행률 바와 함께 표시합니다.
+  Flask에서 render_template()로 전달받된 overview 데이터를 사용합니다.
+#}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>커리큘럼 - 코드교육 랩</title>
+    <style>
+        /* 다크 테마 기본 스타일 (기존 프로젝트와 동일) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+        .navbar {
+            background-color: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .navbar h1 { font-size: 1.4rem; color: #58a6ff; }
+        .navbar nav a {
+            color: #c9d1d9; text-decoration: none; margin-right: 1.5rem;
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .navbar nav a:hover, .navbar nav a.active { color: #58a6ff; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .page-title { font-size: 1.8rem; margin-bottom: 0.5rem; color: #f0f6fc; }
+        .subtitle { color: #8b949e; margin-bottom: 2rem; }
+        .back-link {
+            color: #58a6ff; text-decoration: none; display: inline-block;
+            margin-bottom: 1rem; font-size: 0.9rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        /* 진행률 바 스타일 */
+        .progress-bar-container {
+            background-color: #21262d; border-radius: 8px;
+            height: 24px; overflow: hidden; position: relative;
+        }
+        .progress-bar {
+            height: 100%; border-radius: 8px; transition: width 0.5s ease;
+            display: flex; align-items: center; padding-left: 8px;
+            font-size: 0.75rem; font-weight: 600; color: white;
+            min-width: fit-content;
+        }
+        .progress-bar.low { background-color: #f85149; }
+        .progress-bar.medium { background-color: #d29922; }
+        .progress-bar.high { background-color: #3fb950; }
+        .progress-bar.complete { background-color: #58a6ff; }
+
+        /* 강좌 카드 그리드 */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        .course-card {
+            background-color: #161b22; border: 1px solid #30363d;
+            border-radius: 12px; padding: 1.5rem;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .course-card:hover {
+            border-color: #58a6ff; transform: translateY(-2px);
+        }
+        .course-card-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+        .course-card h3 {
+            font-size: 1.2rem; color: #f0f6fc; margin-bottom: 0.25rem;
+        }
+        .course-card .instructor {
+            color: #8b949e; font-size: 0.9rem;
+        }
+        .course-card .level-badge {
+            padding: 0.25rem 0.6rem; border-radius: 12px;
+            font-size: 0.75rem; font-weight: 600; flex-shrink: 0;
+        }
+        .level-badge.beginner { background-color: #0d4429; color: #3fb950; }
+        .level-badge.intermediate { background-color: #2d1f00; color: #d29922; }
+        .level-badge.advanced { background-color: #3d1114; color: #f85149; }
+
+        .course-card .description {
+            color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .course-card .stats-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.75rem; font-size: 0.85rem; color: #6e7681;
+        }
+        .course-card .progress-section { margin-bottom: 1rem; }
+        .course-card .progress-label {
+            font-size: 0.8rem; color: #8b949e; margin-bottom: 0.3rem;
+            display: flex; justify-content: space-between;
+        }
+        .course-card .card-link {
+            display: block; text-align: center; padding: 0.5rem;
+            background-color: #21262d; color: #58a6ff; border-radius: 8px;
+            text-decoration: none; font-size: 0.9rem; transition: background-color 0.2s;
+        }
+        .course-card .card-link:hover {
+            background-color: #30363d;
+        }
+
+        .empty-state {
+            text-align: center; color: #8b949e; padding: 3rem;
+        }
+    </style>
+</head>
+<body>
+    {# 게이게이션 바 (국문 설명: 모든 페이지에서 공통으로 사용) #}
+    <header class="navbar">
+        <h1>🎓 코드교육 랩</h1>
+        <nav>
+            <a href="/">대시보드</a>
+            <a href="/courses">강좌</a>
+            <a href="/curriculum" class="active">커리큘럼</a>
+            <a href="/progress">진행 현황</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <a href="/" class="back-link">← 대시보드로 돌아가기</a>
+        <h2 class="page-title">📚 커리큘럼 개요</h2>
+        <p class="subtitle">강좌별로 학습 현황을 확인하고 진행해보세요.</p>
+
+        {# 에러 메시지 표시 (Flask에서 error 변수가 전달된 경우) #}
+        {% if error %}
+        <div style="background-color: #3d1114; border: 1px solid #f85149; color: #f85149; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+            ⚠️ {{ error }}
+        </div>
+        {% endif %}
+
+        {# 강좌 카드 그리드 #}
+        <div class="course-grid">
+            {% for course in overview %}
+            <div class="course-card">
+                <div class="course-card-header">
+                    <div>
+                        <h3>{{ course.title }}</h3>
+                        <span class="instructor">강사: {{ course.instructor }}</span>
+                    </div>
+                    <span class="level-badge
+                        {{ 'beginner' if course.level == '초급' else ('intermediate' if course.level == '중급' else 'advanced') }}">
+                        {{ course.level }}
+                    </span>
+                </div>
+                <div class="description">{{ course.description }}</div>
+                <div class="stats-row">
+                    <span>📖 모듈 {{ course.module_count }}개</span>
+                    <span>✅ 완료 {{ course.completed_steps }}/{{ course.total_steps }}</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-label">
+                        <span>진행률</span>
+                        <span>{{ course.completion_percentage }}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar
+                            {{ 'complete' if course.completion_percentage == 100 else ('high' if course.completion_percentage >= 70 else ('medium' if course.completion_percentage >= 30 else 'low')) }}"
+                            style="width: {{ [course.completion_percentage, 5] | max }}%">
+                            {{ course.completion_percentage }}%
+                        </div>
+                    </div>
+                </div>
+                <a href="/curriculum/{{ course.id }}" class="card-link">
+                    자세히 보기 →
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not overview %}
+        <div class="empty-state">
+            <p style="font-size: 2rem; margin-bottom: 0.5rem;">📭</p>
+            <p>등록된 강좌가 없습니다.</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>
