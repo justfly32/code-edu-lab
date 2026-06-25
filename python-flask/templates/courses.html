@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>과목 관리 - 코드교육 랩</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .navbar h1 {
+            font-size: 1.4rem;
+            color: #58a6ff;
+        }
+
+        .navbar nav a {
+            color: #c9d1d9;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .navbar nav a:hover {
+            color: #58a6ff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: #f0f6fc;
+        }
+
+        /* 과목 카드 그리드 */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .course-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .course-card:hover {
+            transform: translateY(-3px);
+            border-color: #58a6ff;
+        }
+
+        .course-card .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .course-card .course-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f0f6fc;
+        }
+
+        .course-card .course-level {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .level-beginner { background-color: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .level-intermediate { background-color: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+        .level-advanced { background-color: rgba(240, 136, 62, 0.2); color: #f0883e; }
+
+        .course-card .instructor {
+            color: #8b949e;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        /* 통계 영역 */
+        .course-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #21262d;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-item .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #58a6ff;
+        }
+
+        .stat-item .stat-label {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-top: 0.2rem;
+        }
+
+        /* 강의 �크 버� */
+        .course-actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .course-actions a {
+            flex: 1;
+            text-align: center;
+            padding: 0.5rem;
+            background-color: #21262d;
+            color: #58a6ff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: background-color 0.2s;
+        }
+
+        .course-actions a:hover {
+            background-color: #30363d;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <h1>� 코드교육 랩</h1>
+        <nav>
+            <a href="/">대시보드</a>
+            <a href="/students">학생 관리</a>
+            <a href="/courses">과목 관리</a>
+            <a href="/submissions">제출 관리</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2 class="page-title">📚 과목 관리</h2>
+
+        <div class="course-grid">
+            {% for course in courses %}
+            <div class="course-card">
+                <div class="course-header">
+                    <span class="course-title">{{ course.title }}</span>
+                    <span class="course-level
+                        {% if course.level == '초급' %}level-beginner
+                        {% elif course.level == '중급' %}level-intermediate
+                        {% else %}level-advanced{% endif %}">
+                        {{ course.level }}
+                    </span>
+                </div>
+                <div class="instructor">👨‍🏫 강사: {{ course.instructor }}</div>
+
+                <div class="course-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ course.student_count }}</div>
+                        <div class="stat-label">수강생 (명)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ course.lesson_count }}</div>
+                        <div class="stat-label">강의 수</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ course.total_submissions }}</div>
+                        <div class="stat-label">제출 건수</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">
+                            {% if course.avg_submission_score %}
+                                {{ course.avg_submission_score }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                        <div class="stat-label">평균 점수</div>
+                    </div>
+                </div>
+
+                <div class="course-actions">
+                    <a href="/lessons/{{ course.id }}">강의 보기 →</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not courses %}
+        <p style="text-align: center; color: #8b949e; padding: 3rem;">
+            등록된 과목이 없습니다.
+        </p>
+        {% endif %}
+    </main>
+</body>
+</html>

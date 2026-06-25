@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제출 관리 - 코드교육 랩</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .navbar h1 {
+            font-size: 1.4rem;
+            color: #58a6ff;
+        }
+
+        .navbar nav a {
+            color: #c9d1d9;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .navbar nav a:hover {
+            color: #58a6ff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: #f0f6fc;
+        }
+
+        /* 제출 카드 그리드 */
+        .submissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .submission-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .submission-header .course-title {
+            font-weight: 600;
+            color: #f0f6fc;
+            font-size: 1rem;
+        }
+
+        /* 점수 배지 */
+        .score-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .score-high { background-color: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .score-medium { background-color: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .score-low { background-color: rgba(248, 81, 73, 0.2); color: #f85149; }
+
+        .submission-body {
+            padding: 1rem 1.25rem;
+        }
+
+        /* �드 미리보기 영역 */
+        .code-preview {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            max-height: 150px;
+            overflow: hidden;
+        }
+
+        .code-preview code {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: #c9d1d9;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* 통계 행 */
+        .submission-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .submission-stats .stat {
+            flex: 1;
+            background-color: #0d1117;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .submission-stats .stat .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #58a6ff;
+        }
+
+        .submission-stats .stat .label {
+            font-size: 0.7rem;
+            color: #6e7681;
+        }
+
+        /* 피드백 영역 */
+        .feedback-section {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #21262d;
+        }
+
+        .feedback-section .feedback-label {
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-bottom: 0.3rem;
+        }
+
+        .feedback-section .feedback-text {
+            font-size: 0.9rem;
+            color: #c9d1d9;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #8b949e;
+            padding: 3rem;
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <h1>� 코드교육 랩</h1>
+        <nav>
+            <a href="/">대시보드</a>
+            <a href="/students">학생 관리</a>
+            <a href="/courses">과목 관리</a>
+            <a href="/submissions">제출 관리</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2 class="page-title">� 제출 관리</h2>
+
+        <div class="submissions-grid">
+            {% for sub in submissions %}
+            <div class="submission-card">
+                <div class="submission-header">
+                    <span class="course-title">{{ sub.course_title }}</span>
+                    {% if sub.avg_score %}
+                        {% if sub.avg_score >= 80 %}
+                            <span class="score-badge score-high">{{ sub.avg_score }}점</span>
+                        {% elif sub.avg_score >= 60 %}
+                            <span class="score-badge score-medium">{{ sub.avg_score }}점</span>
+                        {% else %}
+                            <span class="score-badge score-low">{{ sub.avg_score }}점</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="score-badge score-low">-</span>
+                    {% endif %}
+                </div>
+                <div class="submission-body">
+                    <div class="submission-stats">
+                        <div class="stat">
+                            <div class="value">{{ sub.total_submissions }}</div>
+                            <div class="label">제출 건수</div>
+                        </div>
+                        <div class="stat">
+                            <div class="value">{{ sub.max_score }}</div>
+                            <div class="label">최고 점수</div>
+                        </div>
+                        <div class="stat">
+                            <div class="value">{{ sub.min_score }}</div>
+                            <div class="label">최저 점수</div>
+                        </div>
+                    </div>
+                    <div class="feedback-section">
+                        <div class="feedback-label">� 과목 현황</div>
+                        <div class="feedback-text">
+                            평균 {{ sub.avg_score }}점 (최고 {{ sub.max_score }} / 최저 {{ sub.min_score }})
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not submissions %}
+        <div class="empty-state">
+            <p style="font-size: 2rem; margin-bottom: 0.5rem;">📭</p>
+            <p>제출 내역이 없습니다.</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

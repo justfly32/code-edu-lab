@@ -1,0 +1,40 @@
+{# 
+  base.html - 기본 레이아웃 템플릿 (Base layout template)
+  
+  모든 페이지에서 공통으로 사용하는 레이아웃입니다.
+  Jinja2 템플릿 상속을 통해 각 페이지에서 확장합니다.
+#}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}교육 대시보드{% endblock %}</title>
+    {# 정적 CSS 파일 로드 (Load static CSS) #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {# 네비게이션 바 (Navigation bar) #}
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">🎓 EduLab</a>
+        <ul class="navbar-nav">
+            {# 현재 페이지에 active 클래스 적용 (Apply active class to current page) #}
+            <li><a href="/" class="{{ 'active' if request.path == '/' }}">대시보드</a></li>
+            <li><a href="/students" class="{{ 'active' if request.path == '/students' }}">학생</a></li>
+            <li><a href="/courses" class="{{ 'active' if request.path == '/courses' }}">강좌</a></li>
+            <li><a href="/submissions" class="{{ 'active' if request.path == '/submissions' }}">제출</a></li>
+        </ul>
+    </nav>
+
+    {# 메인 컨텐츠 영역 (Main content area) #}
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    {# Chart.js CDN 로드 (Load Chart.js from CDN) #}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    {# 페이지별 추가 스크립트 (Page-specific scripts) #}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

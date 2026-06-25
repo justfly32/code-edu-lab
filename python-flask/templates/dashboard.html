@@ -1,0 +1,176 @@
+{#
+  dashboard.html - 메인 대시보드 페이지 (Main dashboard page)
+  
+  KPI 카드, Chart.js 차트, 최근 제출 목록을 표시합니다.
+#}
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 교육 대시보드{% endblock %}
+
+{% block content %}
+{# 페이지 헤더 (Page header) #}
+<div class="page-header">
+    <h1>📊 교육 대시보드</h1>
+    <p>학생, 강좌, 제출 현황을 한눈에 확인하세요</p>
+</div>
+
+{# KPI 카드 그리드 (KPI cards grid) #}
+<div class="kpi-grid">
+    {# 학생 수 카드 (Student count card) #}
+    <div class="kpi-card">
+        <div class="kpi-icon blue">👥</div>
+        <div class="kpi-value">{{ student_count }}</div>
+        <div class="kpi-label">전체 학생 수</div>
+    </div>
+    
+    {# 강좌 수 카드 (Course count card) #}
+    <div class="kpi-card">
+        <div class="kpi-icon green">📚</div>
+        <div class="kpi-value">{{ course_count }}</div>
+        <div class="kpi-label">운영 강좌 수</div>
+    </div>
+    
+    {# 제출 수 카드 (Submission count card) #}
+    <div class="kpi-card">
+        <div class="kpi-icon yellow">📝</div>
+        <div class="kpi-value">{{ submission_count }}</div>
+        <div class="kpi-label">총 제출 수</div>
+    </div>
+    
+    {# 평균 점수 카드 (Average score card) #}
+    <div class="kpi-card">
+        <div class="kpi-icon purple">🎯</div>
+        <div class="kpi-value">{{ avg_score }}</div>
+        <div class="kpi-label">평균 점수</div>
+    </div>
+</div>
+
+{# 차트 그리드 (Charts grid) #}
+<div class="charts-grid">
+    {# 강좌별 학생 수 차트 (Students by course chart) #}
+    <div class="chart-card">
+        <h3>📚 강좌별 학생 수</h3>
+        <canvas id="studentsByCourseChart"></canvas>
+    </div>
+    
+    {# 학점 분포 차트 (Grade distribution chart) #}
+    <div class="chart-card">
+        <h3>🎓 성적 분포</h3>
+        <canvas id="gradeDistributionChart"></canvas>
+    </div>
+    
+    {# 제출 타임라인 차트 (Submissions timeline chart) #}
+    <div class="chart-card">
+        <h3>📈 월별 제출 현황</h3>
+        <canvas id="submissionsTimelineChart"></canvas>
+    </div>
+</div>
+
+{# 최근 제출 목록 (Recent submissions list) #}
+<div class="recent-list">
+    <div class="recent-list-header">
+        <h3>🕐 최근 제출</h3>
+    </div>
+    {% for sub in recent_submissions %}
+    <div class="recent-item">
+        <div class="recent-item-info">
+            <div class="name">{{ sub['student_name'] }}</div>
+            <div class="detail">{{ sub['lesson_title'] }} · {{ sub['course_title'] }}</div>
+        </div>
+        <span class="score-badge {{ 'high' if sub['score'] >= 90 else ('mid' if sub['score'] >= 80 else 'low') }}">
+            {{ sub['score'] }}점
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    /*
+     * Chart.js 차트 초기화 (Initialize Chart.js charts)
+     * 서버에서 전달받은 chart_data 변수를 사용합니다.
+     */
+
+    // 공통 차트 옵션 (Common chart options for dark theme)
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = '#2d3348';
+
+    // 차트 데이터 (Chart data from server)
+    const chartData = {{ chart_data | tojson }};
+
+    // ===== 강좌별 학생 수 막대 차트 (Students by course bar chart) =====
+    new Chart(document.getElementById('studentsByCourseChart'), {
+        type: 'bar',
+        data: {
+            labels: chartData.students_by_course.labels,
+            datasets: [{
+                label: '학생 수',
+                data: chartData.students_by_course.data,
+                backgroundColor: [
+                    'rgba(99, 102, 241, 0.7)',
+                    'rgba(34, 197, 94, 0.7)',
+                    'rgba(234, 179, 8, 0.7)',
+                    'rgba(168, 85, 247, 0.7)'
+                ],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    // ===== 성적 분포 도넛 차트 (Grade distribution doughnut chart) =====
+    new Chart(document.getElementById('gradeDistributionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: chartData.grade_distribution.labels,
+            datasets: [{
+                data: chartData.grade_distribution.data,
+                backgroundColor: [
+                    'rgba(99, 102, 241, 0.8)',
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(234, 179, 8, 0.8)',
+                    'rgba(168, 85, 247, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(6, 182, 212, 0.8)',
+                    'rgba(249, 115, 22, 0.8)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'right' }
+            }
+        }
+    });
+
+    // ===== 월별 제출 타임라인 꺾은선 차트 (Monthly submissions line chart) =====
+    new Chart(document.getElementById('submissionsTimelineChart'), {
+        type: 'line',
+        data: {
+            labels: chartData.submissions_timeline.labels,
+            datasets: [{
+                label: '제출 수',
+                data: chartData.submissions_timeline.data,
+                borderColor: 'rgba(99, 102, 241, 1)',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+</script>
+{% endblock %}

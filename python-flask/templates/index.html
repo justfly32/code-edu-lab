@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>코드교육 랩 대시보드</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 다크 테마 기본 스타일 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        /* 네비게이션 바 */
+        .navbar {
+            background-color: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .navbar h1 {
+            font-size: 1.4rem;
+            color: #58a6ff;
+        }
+
+        .navbar nav a {
+            color: #c9d1d9;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .navbar nav a:hover {
+            color: #58a6ff;
+        }
+
+        /* 메인 �텐츠 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: #f0f6fc;
+        }
+
+        /* KPI 카드 영역 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .kpi-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: #58a6ff;
+        }
+
+        .kpi-card .kpi-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #58a6ff;
+        }
+
+        .kpi-card .kpi-label {
+            font-size: 0.9rem;
+            color: #8b949e;
+            margin-top: 0.5rem;
+        }
+
+        /* 차트 영역 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .chart-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-card h3 {
+            margin-bottom: 1rem;
+            color: #c9d1d9;
+            font-size: 1.1rem;
+        }
+
+        .chart-card canvas {
+            max-height: 300px;
+        }
+
+        /* 전체 너비 차트 */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 네비게이션 -->
+    <header class="navbar">
+        <h1>� 코드교육 랩</h1>
+        <nav>
+            <a href="/">대시보드</a>
+            <a href="/students">학생 관리</a>
+            <a href="/courses">과목 관리</a>
+            <a href="/courses">강의 목록</a>
+            <a href="/submissions">제출 관리</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2 class="page-title">📊 학습 대시보드</h2>
+
+        <!-- KPI 카드 섹션 -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">👨‍�</div>
+                <div class="kpi-value">{{ kpi.total_students }}</div>
+                <div class="kpi-label">전체 학생 수</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📚</div>
+                <div class="kpi-value">{{ kpi.total_courses }}</div>
+                <div class="kpi-label">전체 과목 수</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">�</div>
+                <div class="kpi-value">{{ kpi.total_lessons }}</div>
+                <div class="kpi-label">전체 강의 수</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">�</div>
+                <div class="kpi-value">{{ kpi.total_submissions }}</div>
+                <div class="kpi-label">전체 제출 건수</div>
+            </div>
+        </div>
+
+        <!-- 차트 �션 -->
+        <div class="charts-grid">
+            <!-- 과목별 학생 수 바 차트 -->
+            <div class="chart-card">
+                <h3>� 과목별 수강생 수</h3>
+                <canvas id="courseBarChart"></canvas>
+            </div>
+
+            <!-- 성적 분포 파이 차트 -->
+            <div class="chart-card">
+                <h3>🎯 성적 분포</h3>
+                <canvas id="gradePieChart"></canvas>
+            </div>
+
+            <!-- 월별 제출 건수 라인 차트 -->
+            <div class="chart-card full-width">
+                <h3>� 월별 추이</h3>
+                <canvas id="monthlyLineChart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Chart.js 다크 테마 기본 설정
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.borderColor = '#30363d';
+
+        // 과목별 수강생 수 바 차트
+        const courseBarCtx = document.getElementById('courseBarChart').getContext('2d');
+        new Chart(courseBarCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ course_labels | tojson }},
+                datasets: [{
+                    label: '수강생 수 (명)',
+                    data: {{ course_student_counts | tojson }},
+                    backgroundColor: [
+                        '#58a6ff', '#3fb950', '#a371f7', '#f0883e',
+                        '#f85149', '#db61a2', '#26c6da'
+                    ],
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                    },
+                    x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                    }
+                }
+            }
+        });
+
+        // 성적 분포 파이 차트
+        const gradePieCtx = document.getElementById('gradePieChart').getContext('2d');
+        new Chart(gradePieCtx, {
+            type: 'pie',
+            data: {
+                labels: ['A (90+)', 'B (80-89)', 'C (70-79)', 'D (60-69)', 'F (<60)', '미제출'],
+                datasets: [{
+                    data: {{ grade_distribution | tojson }},
+                    backgroundColor: [
+                        '#3fb950', '#58a6ff', '#d29922', '#f0883e',
+                        '#f85149', '#6e7681'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#8b949e', padding: 12 }
+                    }
+                }
+            }
+        });
+
+        // 월별 제출 건수 라인 차트
+        const monthlyLineCtx = document.getElementById('monthlyLineChart').getContext('2d');
+        new Chart(monthlyLineCtx, {
+            type: 'line',
+            data: {
+                labels: {{ monthly_labels | tojson }},
+                datasets: [{
+                    label: '제출 건수',
+                    data: {{ monthly_submissions | tojson }},
+                    borderColor: '#58a6ff',
+                    backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#58a6ff',
+                    pointRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#8b949e' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                    },
+                    x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

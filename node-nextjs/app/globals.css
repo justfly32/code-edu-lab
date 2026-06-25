@@ -1,0 +1,347 @@
+/* 
+ * 전역 스타일 - 다크 테마 기반 코드 교육 � UI
+ * 한국어 UI를 위한 �트 설정 및 CSS 변수 정의
+ */
+
+/* CSS 변수 정의 - 일관된 색상 관리 */
+:root {
+  --bg-primary: #0f172a;      /* 메인 배경색 - 매우 어두운 남색 */
+  --bg-secondary: #1e293b;   /* 보조 배경색 - 카드, 사이드바 */
+  --bg-tertiary: #334155;    /* 3차 배경 - 호버 상태 */
+  --text-primary: #f1f5f9;    /* 기본 텍스트 */
+  --text-secondary: #94a3b8; /* 보조 텍스트 */
+  --text-muted: #64748b;     /* 비활성 텍스트 */
+  --accent-primary: #3b82f6; /* 주요 강조색 - 파란색 */
+  --accent-secondary: #8b5cf6; /* 보조 강조색 - 보라색 */
+  --accent-success: #10b981; /* 성공 색상 - 초록색 */
+  --accent-warning: #f59e0b; /* 경고 색상 - 노란색 */
+  --accent-danger: #ef4444;  /* 위험 색상 - 빨간색 */
+  --border-color: #475569;   /* 테두리 색상 */
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace; /* 코드용 모노스페이스 폰트 */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; /* 한국어 �트 */
+}
+
+/* 기본 리셋 � 전체 스타일 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* 네비게이션 바 스타일 */
+.navbar {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 1.5rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-nav {
+  display: flex;
+  list-style: none;
+  gap: 0.25rem;
+}
+
+.navbar-nav a {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.navbar-nav a:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.navbar-nav a.active {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+/* 메인 �텐츠 영역 */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* 페이지 제목 스타일 */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.page-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+/* KPI 카드 �테이너 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+/* 개별 KPI 카드 스타일 */
+.stat-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.stat-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-card-change {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.stat-card-change.positive {
+  color: var(--accent-success);
+}
+
+.stat-card-change.negative {
+  color: var(--accent-danger);
+}
+
+/* 차트 컨테이너 */
+.chart-container {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.chart-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+/* 테이블 스타일 */
+.table-wrapper {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.875rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+  background-color: var(--bg-tertiary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background-color: var(--bg-tertiary);
+}
+
+/* 코드 블록 스타일 */
+.code-block {
+  background-color: #0d1117;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.825rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  color: #e6edf3;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* �지 스태일 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.badge-success {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--accent-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--accent-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--accent-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-info {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* 과목 카드 그리드 */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.course-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: transform 0.2s ease;
+}
+
+.course-card:hover {
+  transform: translateY(-2px);
+}
+
+.course-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.course-card-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.course-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
+
+/* 로� 상태 */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* 에러 상태 */
+.error-message {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  color: var(--accent-danger);
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 1rem;
+  }
+  .navbar-nav a {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .main-content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
